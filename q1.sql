@@ -22,3 +22,11 @@ INSERT INTO Customers values
 (700,'Deepu','2019-12-12','Appliances','Mumbai',25000,'Premium');
 
 commit;
+
+insert into Customers values
+(10000,'Raman','2019-09-04','Misc','Cochin',9000,'Regular');
+
+
+commit;
+
+
