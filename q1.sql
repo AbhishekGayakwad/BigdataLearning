@@ -1,6 +1,6 @@
-create database test_db1;
+create database test_db;
 
-use test_db1;
+use test_db;
 
 CREATE TABLE Customers
 (
@@ -23,10 +23,61 @@ INSERT INTO Customers values
 
 commit;
 
-insert into Customers values
-(10000,'Raman','2019-09-04','Misc','Cochin',9000,'Regular');
 
+3) use test_db1;
+
+CREATE TABLE Categories (
+category_id INT(11) PRIMARY KEY AUTO_INCREMENT,
+category_department_id INT(11),
+category_name VARCHAR(45),
+inclusion_date datetime NOT NULL);
+
+
+INSERT INTO Categories values
+(1,2,'Football','2020-04-30'),
+(2,2,'Handball','2020-05-01'),
+(3,2,'Baseball & Softball','2020-05-01'),
+(4,2,'Basketball','2020-04-30'),
+(5,3 ,'Tennis','2020-04-30'),
+(6,3,'Hockey','2020-05-01'),
+(7,3,'Swimming','2020-05-01'),
+(8,3,'Cardio Equipment','2020-05-01'),
+(9,4,'Strength Training','2020-05-01'),
+(10,4,'Athletics','2020-05-02'),
+(11,null,'Cycling','2020-02-02'),
+(12,5,null,'2020-01-15');
+
+
+commit;
+  
+
+INSERT INTO Categories values 
+(13,6,'Surfing',CURRENT_TIMESTAMP),
+(14,2,'Mountaineering',CURRENT_TIMESTAMP);
+
+commit;
+
+UPDATE Categories SET category_department_id = 4,inclusion_date = CURRENT_TIMESTAMP WHERE category_id = 11;
+
+commit;
+
+UPDATE Categories SET category_name = 'Skating',inclusion_date = CURRENT_TIMESTAMP WHERE category_id = 12;
 
 commit;
 
 
+create table Categories_new AS SELECT * FROM Categories;
+
+INSERT INTO Categories_new values 
+(15,6,'Boxing',CURRENT_TIMESTAMP),
+(16,6,'Cycling',CURRENT_TIMESTAMP);
+
+commit;
+
+UPDATE Categories_new SET category_department_id = 4,inclusion_date = CURRENT_TIMESTAMP WHERE category_id = 13;
+
+commit;
+
+UPDATE Categories_new SET category_department_id = 4,inclusion_date = CURRENT_TIMESTAMP WHERE category_id = 14;
+
+commit;
