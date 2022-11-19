@@ -132,3 +132,6 @@ sqoop job \
 --merge-key category_id
 
 sqoop job --exec job_que3
+
+
+sqoop  job  --show  job_que3  The current job state is saved for the next run.
