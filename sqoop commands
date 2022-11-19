@@ -1,58 +1,134 @@
-sqoop-eval --connect "jdbc:mysql://quickstart.cloudera:3306" --username root --password cloudera --query "select * from test_db1.Customers"
+ans.1.1> 
 
-sqoop-eval --connect "jdbc:mysql://quickstart.cloudera:3306" --username root --password cloudera --query "select * from test_db1.Customers"
+sqoop eval \
+--connect jdbc:mysql://quickstart.cloudera:3306/test_db1 \
+--username root \
+--password cloudera \
+--query "SELECT * FROM Customers" 1>query.out 2>query.err
 
+ans.1.2 > hadoop fs -mkdir /sqoop_importdir
 
-select Cust_Id,Customer_Name,Purchase_Date,City,Price
-from test_db1.Customer
-where Purchase_Date>'2019-01-01
-
-sqoop-import \
---connect "jdbc:mysql://quickstart.cloudera:3306/test_db1" \
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/test_db1 \
 --username root \
 --password cloudera \
 --table Customers \
---columns Cust_Id,Customer_Name,Purchase_Date,City,Price \
---where "Purchase_Date>'2019-01-01'" \
---target-dir /abhi/assigment/sqoop/ \
---fields-terminated-by ';' \
---null-non-string 'NA' 1>/home/cloudera/Desktop/shared/Assignment/sqoop/log_out1  2>/home/cloudera/Desktop/shared/Assignment/sqoop/log_out2
-
-
-sqoop-import \
---connect "jdbc:mysql://quickstart.cloudera:3306/test_db1" \
---username root \
---password cloudera \
---table Customers \
---columns Cust_Id,Customer_Name,Purchase_Date,City,Price \
---split-by Cust_Id \
---where "Purchase_Date>'2019-01-01'" \
---target-dir /abhi/assigment/sqoop/ \
+--columns Cust_Id,Customer_Name,Purchase_Date,Item,City,Price \
+--where "Purchase_Date> '2019-01-01'" \
 --fields-terminated-by '|' \
---lines-terminated-by ';' \
---delete-target-dir /abhi/assigment/sqoop/ \
---null-non-string 'NA' 1>/home/cloudera/Desktop/shared/Assignment/sqoop/log_out1  2>/home/cloudera/Desktop/shared/Assignment/sqoop/log_out2
+--lines-terminated-by ";" \
+--target-dir /abhi/assigment/sqoop/q3  \
+--delete-target-dir \
+--null-non-string 'NA' \
+--null-string 'NA'
+
+hadoop fs -cat /sqoop_importdir/
 
 
+ans.1.2.2 > split by different column
 
+sqoop import \
+> --connect jdbc:mysql://quickstart.cloudera:3306/test_db1 \
+> --username root \
+> --password cloudera \
+> --table Customers \
+> --split-by cust_id \
+> --columns Cust_Id,Customer_Name,Purchase_Date,Item,City,Price \
+> --where "Purchase_Date> '2019-01-01'" \
+> --fields-terminated-by '|' \
+> --lines-terminated-by ";" \
+> --target-dir /abhi/assigment/sqoop \
+> --delete-target-dir \
+> --null-non-string 'NA' \
+> --null-string 'NA'
 
-sqoop-import \
---connect "jdbc:mysql://quickstart.cloudera:3306/test_db1" \
+ans.1.3> with outlier
+
+sqoop import \
+> --connect jdbc:mysql://quickstart.cloudera:3306/test_db1 \
+> --username root \
+> --password cloudera \
+> --table Customers \
+> --boundary-query "SELECT 100,700" \
+> --columns Cust_Id,Customer_Name,Purchase_Date,Item,City,Price \
+> --where "Purchase_Date> '2019-01-01'" \
+> --fields-terminated-by '|' \
+> --lines-terminated-by ";" \
+> --target-dir //abhi/assigment/sqoop \
+> --delete-target-dir \
+> --null-non-string 'NA' \
+> --null-string 'NA'
+
+ans.2> All tables
+
+sqoop import-all-tables \
+--connect jdbc:mysql://quickstart.cloudera:3306/test_new_db1 \
 --username root \
 --password cloudera \
---table Customers \
---boundry-query "select 100, 700 from dual" \
---null-string 'NA' 1>home/cloudera/Desktop/shared/Assignment/sqoop/log_out_boundry_query_1  2>log_out_boundry_query_2
+--warehouse-dir /abhi/assigment/sqoop \
+--exclude-tables Country_Tbl
 
+sqoop import-all-tables --connect jdbc:mysql://quickstart.cloudera:3306/test_new_db --username root --password cloudera --warehouse-dir /sqoop_all_tbl --exclude-tables Country_Tbl --num-mappers 3 --autoreset-to-one-mapper 
 
-
-
-
-sqoop-import-all-tables \
---connect "jdbc:mysql://quickstart.cloudera:3306/test_new_db1" \
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/test_db1 \
 --username root \
 --password cloudera \
---exclude-tables "Country_Tbl" \
---autoreset-to-one-mapper \
--m 3 \
---warehouse-dir /sqoop_all_tbl
+--table Categories \
+--null-non-string '-1' \
+--null-string '\\N' \
+--warehouse-dir /abhi/assigment/sqoop/q3 \
+--verbose
+
+
+
+sqoop import \
+--connect jdbc:mysql://quickstart.cloudera:3306/test_db1 \
+--username root \
+--password cloudera \
+--table Categories \
+--null-non-string '-1' \
+--null-string '\\N' \
+--warehouse-dir /abhi/assigment/sqoop/q3 \
+--incremental lastmodified \
+--check-column inclusion_date \
+--last-value '2020-05-02 00:00' \
+--append
+
+
+
+
+
+sqoop job \
+--create job_que3 \
+-- import \
+--connect jdbc:mysql://quickstart.cloudera:3306/test_db1 \
+--username root \
+--password-file /home/cloudera/password-file \
+--table Categories_new \
+--warehouse-dir /abhi/assigment/sqoop/q3  \
+--split-by category_id \
+--incremental lastmodified \
+--check-column inclusion_date \
+--last-value 0 \
+--merge-key category_id
+
+
+hadoop credential create mysql.abhi.password -provider jceks://hdfs/user/cloudera/mysql.password.jceks
+
+sqoop job \
+-Dhadoop.security.credential.provider.path=jceks://hdfs/user/cloudera/mysql.password.jceks \
+--create job_que3 \
+-- import \
+--connect jdbc:mysql://quickstart.cloudera:3306/test_db1 \
+--username root \
+--password-alias mysql.abhi.password \
+--table Categories_new \
+--warehouse-dir /abhi/assigment/sqoop/q3  \
+--split-by category_id \
+--incremental lastmodified \
+--check-column inclusion_date \
+--last-value 0 \
+--merge-key category_id
+
+sqoop job --exec job_que3
