@@ -1,0 +1,181 @@
+
+
+hadoop credential create mysql.abhi1.password -provider jceks://hdfs/user/cloudera/mysql.password.jceks
+
+
+sqoop-export \
+-Dhadoop.security.credential.provider.path=jceks://hdfs/user/cloudera/mysql.password.jceks \
+--connect jdbc:mysql://quickstart.cloudera:3306/test_db1 \
+--username root \
+--password-alias mysql.abhi1.password \
+--table State_Testing \
+--staging-table State_Testing_Stage \
+--clear-staging-table \
+--export-dir /abhi/assigment/hive_assignment_part1/state_testing_data \
+--fields-terminated-by ','
+
+
+sqoop-export \
+
+--connect jdbc:mysql://quickstart.cloudera:3306/test_db1 \
+--username root \
+--password-alias mysql.abhi1.password \
+--table Covid_India \
+--staging-table Covid_India_Stage \
+--clear-staging-table \
+--export-dir /abhi/assigment/hive_assignment_part1/covid_data \
+--fields-terminated-by ','
+
+sqoop job --delete job_testingdetails_inc
+
+sqoop job \
+-Dhadoop.security.credential.provider.path=jceks://hdfs/user/cloudera/mysql.password.jceks \
+--create job_testingdetails_inc \
+-- import \
+--connect jdbc:mysql://quickstart.cloudera:3306/test_db1 \
+--username root \
+--password-alias mysql.abhi1.password \
+--table State_Testing \
+--warehouse-dir /abhi/assigment/hive_assignment_part1/ \
+--split-by seq \
+--incremental append \
+--check-column seq \
+--last-value 0 \
+--compress
+
+
+sqoop job --exec job_testingdetails_inc
+
+
+sqoop job \
+-Dhadoop.security.credential.provider.path=jceks://hdfs/user/cloudera/mysql.password.jceks \
+--create job_coviddetails_inc \
+-- import \
+--connect jdbc:mysql://quickstart.cloudera:3306/test_db1 \
+--username root \
+--password-alias mysql.abhi1.password \
+--table Covid_India \
+--warehouse-dir /abhi/assigment/hive_assignment_part1/State_Testing \
+--split-by sno \
+--incremental append \
+--check-column sno \
+--last-value 0 \
+--compress
+
+
+sqoop job --exec job_coviddetails_inc
+
+
+
+create database if not exists covid_india;
+
+
+CREATE EXTERNAL TABLE IF NOT EXISTS State_Testing
+(seq INT,
+date STRING,
+state STRING,
+total_samples INT,
+negative INT,
+positive INT)
+COMMENT 'Table to store Statewise Testing Details'
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+STORED AS TEXTFILE
+LOCATION '/abhi/assigment/hive_assignment_part1/State_Testing';
+
+
+
+select * from State_Testing LIMIT 5;
+
+
+CREATE EXTERNAL TABLE IF NOT EXISTS Covid_India
+(sno INT,
+date STRING,
+state STRING,
+cured INT,
+deaths INT,
+confirmed INT)
+COMMENT 'Table to store Statewise Covid Count Details'
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+STORED AS TEXTFILE
+LOCATION '/user/cloudera/data1/sqoop_imported/Covid_India';
+
+
+/abhi/assigment/hive_assignment_part1/partitions_testing
+/abhi/assigment/hive_assignment_part1/partitions_covid_india
+
+
+
+set hive.exec.dynamic.partition=true;
+set hive.exec.dynamic.partition.mode=nonstrict;
+set hive.enforce.bucketing=true;
+
+
+
+CREATE EXTERNAL TABLE IF NOT EXISTS State_Testing_ORC
+(seq INT,
+date DATE,
+total_samples INT,
+negative INT,
+positive INT)
+PARTITIONED BY (state STRING)
+CLUSTERED BY (date) into 4 BUCKETS
+STORED AS ORC
+LOCATION '/abhi/assigment/hive_assignment_part1/partitions_testing'
+TBLPROPERTIES('orc.compress' = 'SNAPPY');
+
+
+
+
+INSERT OVERWRITE TABLE State_Testing_ORC
+PARTITION (state)
+SELECT
+seq,from_unixtime(unix_timestamp(date,'M/dd/yyyy'),'yyyy-MM-dd'),
+total_samples,negative,positive,state
+FROM State_Testing;
+
+
+CREATE EXTERNAL TABLE IF NOT EXISTS Covid_India_ORC
+(sno INT,
+date STRING,
+cured INT,
+deaths INT,
+confirmed INT)
+PARTITIONED BY (state STRING)
+CLUSTERED BY (date) into 4 BUCKETS
+STORED AS ORC
+LOCATION '/abhi/assigment/hive_assignment_part1/partitions_covid_india'
+TBLPROPERTIES('orc.compress' = 'SNAPPY');
+
+
+
+
+
+INSERT OVERWRITE TABLE Covid_India_ORC
+PARTITION (state)
+SELECT
+sno,from_unixtime(unix_timestamp(date,'dd/M/yy'),'yyyy-MM-dd'),
+cured,deaths,confirmed,state
+FROM Covid_India;
+
+
+set hive.auto.convert.join = false
+
+set hive.ignore.mapjoin.hint = false;
+
+
+SELECT /*+ MAPJOIN(T) */
+T.state,T.date,T.total_samples,T.negative,T.positive,C.cured,C.deaths,C.
+confirmed
+FROM State_Testing_ORC T JOIN Covid_India_ORC C
+19
+ON (C.state = T.state) AND (C.date = T.date) LIMIT 100;
+
+
+SELECT /*+ MAPJOIN(T) */
+T.state,T.date,T.total_samples,T.negative,T.positive,C.cured,C.deaths,C.
+confirmed
+FROM State_Testing_ORC T JOIN Covid_India_ORC C
+19
+ON (C.state = T.state) AND (C.date = T.date) ;
